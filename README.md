@@ -5,6 +5,8 @@
 ![Framework](https://img.shields.io/badge/framework-MITRE%20ATT%26CK-C00000)
 ![Scope](https://img.shields.io/badge/techniques%20mapped-13-2E7D32)
 
+## ▶️ [Watch the full tutorial on YouTube](https://www.youtube.com/watch?v=GZ-GjYyQEVY&t=7651s)
+
 A full reconstruction of a web-to-root intrusion against a Linux host, built entirely from log hunting in **Advanced Hunting (Log Analytics workspace `LAW-HuntPractice`)**. The write-up covers the timeline, the evidence behind each finding, the KQL used to find it, ATT&CK mapping, IOCs, detection gaps and remediation.
 
 > [!NOTE]
