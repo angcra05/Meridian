@@ -1,0 +1,163 @@
+// Extracted from this repository's existing README for convenient review.
+// Documentation extraction only: not newly executed or validated.
+// Run each block separately; verify table schemas and time windows in your workspace.
+
+// ---- README query 1 ----
+// Recon: attacker web requests excluding the gobuster flood
+let start_time = datetime(2026-02-06 02:42:00);
+let end_time   = datetime(2026-02-06 05:30:00);
+let AttackerIP = "10.1.134.57";
+MeridianAccess_CL
+| where EventTime_t between (start_time .. end_time)
+| where isnotempty(EventTime_t)
+| sort by EventTime_t asc
+| where ClientIp_s == AttackerIP
+| where UserAgent_s !contains "gobuster"
+
+// ---- README query 2 ----
+// Derived summary: first seen and request count per tool (not in screenshots; validate in your workspace)
+let start_time = datetime(2026-02-06 02:42:00);
+let end_time   = datetime(2026-02-07 05:30:00);
+let AttackerIP = "10.1.134.57";
+MeridianAccess_CL
+| where EventTime_t between (start_time .. end_time)
+| where ClientIp_s == AttackerIP
+| extend Tool = case(
+    UserAgent_s has "gobuster", "gobuster",
+    UserAgent_s has "WhatWeb",  "WhatWeb",
+    UserAgent_s has "curl",     "curl",
+    UserAgent_s has "Mozilla",  "Mozilla/5.0 (compatible)",
+    "other")
+| summarize FirstSeen = min(EventTime_t), Requests = count() by Tool
+| sort by FirstSeen asc
+
+// ---- README query 3 ----
+// Exploitation: every request to the vulnerable endpoint
+let start_time = datetime(2026-02-06 02:42:00);
+let end_time   = datetime(2026-02-07 05:30:00);
+let AttackerIP = "10.1.134.57";
+MeridianAccess_CL
+| where EventTime_t between (start_time .. end_time)
+| where isnotempty(EventTime_t)
+| sort by EventTime_t asc
+| where ClientIp_s == AttackerIP
+| where RequestUri_s contains "config_viewer.php"
+
+// ---- README query 4 ----
+// Logins from the attacker after database.conf was read (04:08 UTC = 11:08 PM local)
+let after_database_conf = datetime(2026-02-06 04:08:00);
+let end_time   = datetime(2026-02-06 05:30:00);
+let AttackerIP = "10.1.134.57";
+MeridianAuth_CL
+| where EventTime_t between (after_database_conf .. end_time)
+| where isnotempty(EventTime_t)
+| sort by EventTime_t asc
+| where SourceIP == AttackerIP
+
+// ---- README query 5 ----
+// Defender events mentioning root: failed sudo, failed SSH, sweep kill, responder sudo
+let start_time = datetime(2026-02-06 02:42:00);
+let end_time   = datetime(2026-02-07 05:30:00);
+MeridianDefender_CL
+| where EventTime_t between (start_time .. end_time)
+| where isnotempty(EventTime_t)
+| sort by EventTime_t asc
+| where RawMessage_s contains "root"
+
+// ---- README query 6 ----
+// Audit trail: process executions with arguments, including /tmp/rootbash -p
+let start_time = datetime(2026-02-06 02:42:00);
+MeridianAudit_CL
+| where EventTime_t > datetime(2026-02-06 03:47:00)
+| where isnotempty(EventTime_t)
+| sort by EventTime_t asc
+| where isnotempty(Argv_s)
+
+// ---- README query 7 ----
+// Process snapshot: running beacon, its PID, parent and executable link
+MeridianSnapshot_CL
+| where EventTime_t > datetime(2026-02-06 03:47:00)
+| where isnotempty(EventTime_t)
+| sort by EventTime_t asc
+| project EventTime_t, ProcBeaconName_s, ProcBeaconPid_s, ProcBeaconPPid_s, ProcBeaconExeLink_s
+
+// ---- README query 8 ----
+// IR sweep actions (excludes the scanner detections)
+let start_time = datetime(2026-02-06 02:42:00);
+let end_time   = datetime(2026-02-07 05:30:00);
+MeridianDefender_CL
+| where EventTime_t between (start_time .. end_time)
+| where isnotempty(EventTime_t)
+| sort by EventTime_t asc
+| where RawMessage_s !contains "Scanner"
+| where EventCategory_s contains "SWEEP"
+
+// ---- README query 9 ----
+// Blocked outbound connections to the attacker's C2 port
+let start_time = datetime(2026-02-05 02:42:00);
+let end_time   = datetime(2026-02-07 07:30:00);
+let AttackerIP = "10.1.134.57";
+MeridianDefender_CL
+| where EventTime_t between (start_time .. end_time)
+| where isnotempty(EventTime_t)
+| sort by EventTime_t asc
+| where DestIp_s == AttackerIP
+| where EventCategory_s == "NETWORK"
+
+// ---- README query 10 ----
+// Derived: blocked-connection volume per hour (not in screenshots; validate in your workspace)
+let AttackerIP = "10.1.134.57";
+MeridianDefender_CL
+| where DestIp_s == AttackerIP and EventCategory_s == "NETWORK"
+| summarize BlockedConnections = count() by bin(EventTime_t, 1h)
+| sort by EventTime_t asc
+
+// ---- README query 11 ----
+// Export events from the attacker IP
+let start_time = datetime(2026-02-05 02:42:00);
+let end_time   = datetime(2026-02-07 07:30:00);
+let AttackerIP = "10.1.134.57";
+MeridianDefender_CL
+| where EventTime_t between (start_time .. end_time)
+| where isnotempty(EventTime_t)
+| sort by EventTime_t asc
+| where SourceIP == AttackerIP
+| where RawMessage_s contains "export"
+
+// ---- README query 12 ----
+// Database activity across the window
+let start_time = datetime(2026-02-06 02:42:00);
+let end_time   = datetime(2026-02-07 05:30:00);
+MeridianMySQL_CL
+| where EventTime_t between (start_time .. end_time)
+| where isnotempty(EventTime_t)
+| sort by EventTime_t asc
+
+// ---- README query 13 ----
+// Config file tampering events
+let start_time = datetime(2026-02-05 02:42:00);
+let end_time   = datetime(2026-02-07 07:30:00);
+MeridianDefender_CL
+| where EventTime_t between (start_time .. end_time)
+| where isnotempty(EventTime_t)
+| sort by EventTime_t asc
+| where RawMessage_s contains "config"
+
+// ---- README query 14 ----
+// Defender timeline including the pre-attack baseline and the sysmon removal
+let start_time = datetime(2026-02-05 02:42:00);
+let end_time   = datetime(2026-02-07 07:30:00);
+MeridianDefender_CL
+| where EventTime_t between (start_time .. end_time)
+| where isnotempty(EventTime_t)
+| sort by EventTime_t asc
+
+// ---- README query 15 ----
+// Memory acquisition: avml and the evidence path
+let start_time = datetime(2026-02-06 02:42:00);
+MeridianAudit_CL
+| where EventTime_t > datetime(2026-02-05 03:47:00)
+| where isnotempty(EventTime_t)
+| sort by EventTime_t asc
+| where isnotempty(Argv_s)
+| where Argv_s has_any ("avml", "rootbash")
